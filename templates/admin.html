@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block content %}
+  <main class="admin-shell">
+    <div class="admin-head">
+      <div>
+        <h1>Admin Dashboard</h1>
+        <p>{{ submitted_count }} submitted sessions, {{ records|length }} sessions total.</p>
+      </div>
+      <a class="primary-link" href="{{ url_for('admin_csv') }}">Download CSV</a>
+    </div>
+
+    <section class="stat-grid">
+      {% for stat in stats %}
+        <article class="stat-card">
+          <div class="stat-title">
+            <h2>{{ stat.label }}</h2>
+            <span>Graph</span>
+          </div>
+          <p class="stat-number">{{ "%.2f"|format(stat.avg_rating) }}</p>
+          <p class="stat-muted">{{ stat.total_ratings }} ratings</p>
+
+          <div class="chosen-box">
+            <div>
+              <span>Chosen</span>
+              <strong>{{ stat.chosen_count }}</strong>
+            </div>
+            <div class="progress-track">
+              <span style="width: {{ stat.choice_share }}%"></span>
+            </div>
+            <p>{{ "%.1f"|format(stat.choice_share) }}% favorite share</p>
+          </div>
+
+          <div class="distribution">
+            {% for rating in [5, 4, 3, 2, 1] %}
+              {% set count = stat.distribution[rating|string] %}
+              {% set max_count = stat.distribution.values()|max %}
+              {% set width = (count / max_count * 100) if max_count else 0 %}
+              <div>
+                <span>{{ rating }}</span>
+                <div class="mini-track"><span style="width: {{ width }}%"></span></div>
+                <span>{{ count }}</span>
+              </div>
+            {% endfor %}
+          </div>
+        </article>
+      {% endfor %}
+    </section>
+
+    <section class="admin-table-card">
+      <div class="table-head">
+        <div>
+          <h2>Recent Submissions</h2>
+          <p>Total sessions: {{ records|length }}</p>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Seed Track</th>
+              <th>Favorite</th>
+              <th>Mod A</th>
+              <th>Mod B</th>
+              <th>Mod C</th>
+              <th>Mod D</th>
+              <th>Spotify</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for record in records %}
+              <tr>
+                <td>{{ record.created_at.date() }}</td>
+                <td>
+                  <strong>{{ record.seed_track_name }}</strong>
+                  <small>{{ record.seed_artist_name }}</small>
+                </td>
+                <td>{{ model_labels.get(record.preferred_model, "-") }}</td>
+                <td>{{ record.rating_model_a or "-" }}</td>
+                <td>{{ record.rating_model_b or "-" }}</td>
+                <td>{{ record.rating_model_c or "-" }}</td>
+                <td>{{ record.rating_model_d or "-" }}</td>
+                <td class="primary-cell">{{ record.rating_spotify or "-" }}</td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="8" class="empty">No evaluations submitted yet.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+{% endblock %}

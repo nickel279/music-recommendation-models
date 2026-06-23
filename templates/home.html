@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+{% block content %}
+  <main class="home-shell">
+    <section class="home-copy">
+      <div class="pill">Spotify recommender evaluation</div>
+
+      <div class="home-title">
+        <h1>Music Eval</h1>
+        <p>
+          Search a seed track, review five model-generated recommendations,
+          rate each one, and choose the track you would keep.
+        </p>
+      </div>
+
+      <div class="feature-grid">
+        <article>
+          <span class="feature-icon">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M9 18V5l11-2v13" />
+              <circle cx="6" cy="18" r="3" />
+              <circle cx="17" cy="16" r="3" />
+            </svg>
+          </span>
+          <h2>Seed track</h2>
+          <p>Spotify search starts each session.</p>
+        </article>
+        <article>
+          <span class="feature-icon">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 12a8 8 0 0 1 16 0" />
+              <path d="M4 12v4a2 2 0 0 0 2 2h2v-8H6a2 2 0 0 0-2 2Z" />
+              <path d="M20 12v4a2 2 0 0 1-2 2h-2v-8h2a2 2 0 0 1 2 2Z" />
+            </svg>
+          </span>
+          <h2>Five outputs</h2>
+          <p>Each recommendation shows its source.</p>
+        </article>
+        <article>
+          <span class="feature-icon">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 19V5" />
+              <path d="M4 19h16" />
+              <path d="M8 16v-5" />
+              <path d="M12 16V8" />
+              <path d="M16 16v-3" />
+            </svg>
+          </span>
+          <h2>Stats ready</h2>
+          <p>Ratings and choices go to admin.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="search-panel-wrap">
+      <form class="search-panel" method="get" action="{{ url_for('home') }}">
+        <div class="panel-head">
+          <div>
+            <p>Start evaluation</p>
+            <span>Pick one familiar track.</span>
+          </div>
+          <button class="icon-button" type="submit" aria-label="Search">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 12h14" />
+              <path d="m13 6 6 6-6 6" />
+            </svg>
+          </button>
+        </div>
+
+        <div class="search-input-wrap">
+          <span class="search-icon">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="11" cy="11" r="7" />
+              <path d="m16 16 4 4" />
+            </svg>
+          </span>
+          <input
+            id="q"
+            name="q"
+            value="{{ query }}"
+            placeholder="Search for a song..."
+            autocomplete="off"
+            autofocus>
+        </div>
+      </form>
+
+      {% if query and not tracks %}
+        <div class="floating-status" id="search-status">
+          <p>No tracks found.</p>
+        </div>
+      {% else %}
+        <div class="floating-status hidden" id="search-status"></div>
+      {% endif %}
+
+      <div class="floating-status hidden" id="prepare-status">
+        <div class="loading-line">
+          <span class="loader"></span>
+          <div>
+            <strong>Preparing recommendations</strong>
+            <p>The model set is being assembled.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="search-results-card{% if not tracks %} hidden{% endif %}" id="search-results">
+        {% if tracks %}
+          {% for track in tracks %}
+            <form method="post" action="{{ url_for('start_session') }}" class="result-form">
+              <input type="hidden" name="track_id" value="{{ track.id }}">
+              <button type="submit" class="result-row">
+                {% if track.image_url %}
+                  <img src="{{ track.image_url }}" alt="">
+                {% else %}
+                  <span class="image-fallback">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M9 18V5l11-2v13" />
+                      <circle cx="6" cy="18" r="3" />
+                      <circle cx="17" cy="16" r="3" />
+                    </svg>
+                  </span>
+                {% endif %}
+                <span class="result-text">
+                  <strong>{{ track.name }}</strong>
+                  <small>{{ track.artist }}</small>
+                </span>
+                <span class="result-arrow">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M5 12h14" />
+                    <path d="m13 6 6 6-6 6" />
+                  </svg>
+                </span>
+              </button>
+            </form>
+          {% endfor %}
+        {% endif %}
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const searchInput = document.getElementById("q");
+    const resultsCard = document.getElementById("search-results");
+    const statusBox = document.getElementById("search-status");
+    const prepareStatus = document.getElementById("prepare-status");
+    let searchTimer = null;
+    let activeController = null;
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+    }
+
+    function renderTracks(tracks) {
+      if (!tracks.length) {
+        resultsCard.classList.add("hidden");
+        statusBox.innerHTML = "<p>No tracks found.</p>";
+        statusBox.classList.remove("hidden");
+        return;
+      }
+
+      statusBox.classList.add("hidden");
+      resultsCard.innerHTML = tracks.map((track) => `
+        <form method="post" action="{{ url_for('start_session') }}" class="result-form">
+          <input type="hidden" name="track_id" value="${escapeHtml(track.id)}">
+          <button type="submit" class="result-row">
+            ${
+              track.image_url
+                ? `<img src="${escapeHtml(track.image_url)}" alt="">`
+                : `<span class="image-fallback">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M9 18V5l11-2v13" />
+                      <circle cx="6" cy="18" r="3" />
+                      <circle cx="17" cy="16" r="3" />
+                    </svg>
+                  </span>`
+            }
+            <span class="result-text">
+              <strong>${escapeHtml(track.name)}</strong>
+              <small>${escapeHtml(track.artist)}</small>
+            </span>
+            <span class="result-arrow">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 12h14" />
+                <path d="m13 6 6 6-6 6" />
+              </svg>
+            </span>
+          </button>
+        </form>
+      `).join("");
+      resultsCard.classList.remove("hidden");
+      attachPrepareHandlers();
+    }
+
+    function setStatus(text) {
+      resultsCard.classList.add("hidden");
+      statusBox.innerHTML = `<p>${escapeHtml(text)}</p>`;
+      statusBox.classList.remove("hidden");
+    }
+
+    function attachPrepareHandlers() {
+      document.querySelectorAll(".result-form").forEach((form) => {
+        form.addEventListener("submit", () => {
+          resultsCard.classList.add("hidden");
+          statusBox.classList.add("hidden");
+          prepareStatus.classList.remove("hidden");
+        });
+      });
+    }
+
+    async function liveSearch() {
+      const query = searchInput.value.trim();
+      prepareStatus.classList.add("hidden");
+      if (query.length <= 1) {
+        resultsCard.classList.add("hidden");
+        statusBox.classList.add("hidden");
+        return;
+      }
+
+      if (activeController) activeController.abort();
+      activeController = new AbortController();
+      setStatus("Searching Spotify...");
+
+      try {
+        const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`, {
+          signal: activeController.signal,
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Search failed");
+        renderTracks(data.tracks || []);
+      } catch (error) {
+        if (error.name === "AbortError") return;
+        setStatus("Spotify search failed. Please try again.");
+      }
+    }
+
+    searchInput.addEventListener("input", () => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(liveSearch, 400);
+    });
+    attachPrepareHandlers();
+  </script>
+{% endblock %}

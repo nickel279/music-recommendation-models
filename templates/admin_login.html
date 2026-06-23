@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+  <main class="center-shell">
+    <section class="login-card">
+      <h1>Admin Password</h1>
+      <p>Enter the admin password to view statistics.</p>
+    <form method="post" action="{{ url_for('admin') }}">
+      <input id="password" type="password" name="password" autofocus>
+      <button type="submit">Unlock</button>
+    </form>
+  </section>
+  </main>
+{% endblock %}

@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% block content %}
+  <header class="rate-header">
+    <div class="rate-header-inner">
+      <div class="seed-block">
+        <div class="seed-image">
+          {% if data.seed_track.image_url %}
+            <img src="{{ data.seed_track.image_url }}" alt="">
+          {% else %}
+            <span>
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M9 18V5l11-2v13" />
+                <circle cx="6" cy="18" r="3" />
+                <circle cx="17" cy="16" r="3" />
+              </svg>
+            </span>
+          {% endif %}
+        </div>
+        <div>
+          <p>Seed track</p>
+          <h1>{{ data.seed_track.name }}</h1>
+          <span>{{ data.seed_track.artist }}</span>
+        </div>
+      </div>
+
+      <div class="rate-actions">
+        <div class="counter"><span id="rated-count">0</span> / 5 rated</div>
+        <div class="counter" id="favorite-status">Choose a favorite</div>
+        <button form="rating-form" id="submit-button" type="submit" disabled>Submit</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="rate-main">
+    <form method="post" class="rating-form" id="rating-form">
+      <div class="section-heading">
+      <h2>Rate the recommendations</h2>
+      <p>Pick the recommendation you would actually save.</p>
+      </div>
+
+      <section class="rec-grid">
+      {% for model_key in data.order %}
+        {% set track = data.recommendations[model_key] %}
+        <article class="rec-card">
+          <div class="rec-card-head">
+            <div>
+              <p>{% if show_model_names %}Recommendation {{ loop.index }}{% else %}Anonymous recommendation{% endif %}</p>
+              <h3>{% if show_model_names %}{{ model_labels[model_key] }}{% else %}Recommendation {{ loop.index }}{% endif %}</h3>
+              {% if data.notes.get(model_key) %}
+                <p class="note">{{ data.notes.get(model_key) }}</p>
+              {% endif %}
+            </div>
+            <span class="state-icon" data-state-for="{{ model_key }}"></span>
+          </div>
+
+          <div class="rec-card-body">
+            <div class="track-block">
+              <div class="track-image">
+                {% if track.image_url %}
+                  <img src="{{ track.image_url }}" alt="">
+                {% else %}
+                  <span>
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M9 18V5l11-2v13" />
+                      <circle cx="6" cy="18" r="3" />
+                      <circle cx="17" cy="16" r="3" />
+                    </svg>
+                  </span>
+                {% endif %}
+              </div>
+              <div>
+                <h4 title="{{ track.name }}">{{ track.name }}</h4>
+                <p title="{{ track.artist }}">{{ track.artist }}</p>
+                <a class="track-spotify-link" href="{{ track.spotify_url }}" target="_blank" rel="noreferrer">
+                  Open in Spotify
+                </a>
+              </div>
+            </div>
+
+            {% if track.id %}
+              <div class="spotify-embed">
+                <iframe
+                  src="https://open.spotify.com/embed/track/{{ track.id }}"
+                  width="100%"
+                  height="80"
+                  frameborder="0"
+                  allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                  loading="lazy">
+                </iframe>
+              </div>
+            {% else %}
+              <div class="preview-unavailable">
+                <span>Preview unavailable for this track</span>
+                <a href="{{ track.spotify_url }}" target="_blank" rel="noreferrer">Open in Spotify</a>
+              </div>
+            {% endif %}
+
+            <div class="quality-box">
+              <p>Recommendation quality</p>
+              <div class="star-group" role="radiogroup" aria-label="Rating for {{ model_labels[model_key] }}">
+                {% for value in [1, 2, 3, 4, 5] %}
+                  <label class="star-option">
+                    <input type="radio" name="rating_{{ model_key }}" value="{{ value }}" required>
+                    <span>&#9733;</span>
+                  </label>
+                {% endfor %}
+              </div>
+            </div>
+
+            <label class="favorite-button">
+              <input type="radio" name="preferred_model" value="{{ model_key }}" required>
+              <span>Choose as favorite</span>
+            </label>
+          </div>
+        </article>
+      {% endfor %}
+      </section>
+    </form>
+  </main>
+
+  <script>
+    const modelKeys = {{ data.order|tojson }};
+    const ratedCount = document.getElementById("rated-count");
+    const favoriteStatus = document.getElementById("favorite-status");
+    const submitButton = document.getElementById("submit-button");
+
+    function updateRatingState() {
+      let rated = 0;
+      for (const key of modelKeys) {
+        const selectedRating = document.querySelector(`input[name="rating_${key}"]:checked`);
+        const stateIcon = document.querySelector(`[data-state-for="${key}"]`);
+        const card = stateIcon.closest(".rec-card");
+        const selectedValue = selectedRating ? Number(selectedRating.value) : 0;
+        document.querySelectorAll(`input[name="rating_${key}"]`).forEach((input) => {
+          const label = input.closest(".star-option");
+          label.classList.toggle("on", Number(input.value) <= selectedValue);
+        });
+        if (selectedRating) {
+          rated += 1;
+          stateIcon.textContent = "Done";
+          card.classList.add("rated");
+        } else {
+          stateIcon.textContent = "";
+          card.classList.remove("rated");
+        }
+      }
+
+      const favorite = document.querySelector('input[name="preferred_model"]:checked');
+      document.querySelectorAll(".favorite-button").forEach((label) => {
+        const selected = label.querySelector("input").checked;
+        label.classList.toggle("selected", selected);
+        label.querySelector("span").textContent = selected ? "Favorite recommendation" : "Choose as favorite";
+        label.closest(".rec-card").classList.toggle("favorite-selected", selected);
+      });
+
+      ratedCount.textContent = String(rated);
+      favoriteStatus.textContent = favorite ? "Favorite selected" : "Choose a favorite";
+      submitButton.disabled = !(rated === modelKeys.length && favorite);
+    }
+
+    document.querySelectorAll("input").forEach((input) => {
+      input.addEventListener("change", updateRatingState);
+    });
+
+    updateRatingState();
+  </script>
+{% endblock %}

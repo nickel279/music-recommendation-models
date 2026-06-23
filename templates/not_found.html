@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+  <main class="center-shell">
+  <section class="center-card">
+    <h1>Session not found</h1>
+    <p>This rating link does not exist on this server.</p>
+    <a class="primary-link" href="{{ url_for('home') }}">Go home</a>
+  </section>
+  </main>
+{% endblock %}
