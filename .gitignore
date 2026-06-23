@@ -1,0 +1,6 @@
+.env.local
+.venv
+__pycache__
+*.pyc
+*.log
+music_eval.sqlite3
