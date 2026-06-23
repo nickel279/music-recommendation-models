@@ -1,0 +1,24 @@
+{
+  "collaborative_rmse": 1.237498376438082,
+  "collaborative_mae": 1.0387457137672431,
+  "ranking": [
+    {
+      "model": "Content-based",
+      "evaluated_users": 250,
+      "hit_rate@10": 0.02
+    },
+    {
+      "model": "Collaborative SVD item-item",
+      "evaluated_users": 250,
+      "hit_rate@10": 0.004
+    },
+    {
+      "model": "Hybrid",
+      "evaluated_users": 250,
+      "hit_rate@10": 0.016
+    }
+  ],
+  "catalogue_tracks": 88271,
+  "synthetic_users": 5000,
+  "synthetic_interactions": 323782
+}
